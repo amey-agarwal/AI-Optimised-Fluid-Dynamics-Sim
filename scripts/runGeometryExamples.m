@@ -22,10 +22,13 @@ for family = families
     fprintf('%-8s %-26s %-9d %-8.3f %-10.4f %-10.4f %-8.4f\n', family, ...
         mat2str(space.example, 3), geom.isFeasible, geom.feasibility.minGap, ...
         geom.solidAreaExact, geom.solidAreaMask, relErr);
-    ax = nexttile(tl);
-    plotGeometry(geom, 'Parent', ax);
-    exportgraphics(ax, fullfile(figDir, "geometry_" + family + ".png"), ...
-        'Resolution', 150);
+    plotGeometry(geom, 'Parent', nexttile(tl));
+    % Single-family image from its own figure (exporting one axes of a
+    % tiled layout is what failed to render in MATLAB Online).
+    figOne = figure('Color', 'w', 'Position', [100 100 1100 240]);
+    plotGeometry(geom, 'Parent', axes(figOne));
+    report(saveFigure(figOne, fullfile(figDir, "geometry_" + family + ".png")), family);
+    close(figOne);
 end
 
 %% An infeasible design: overlapping posts
@@ -34,7 +37,7 @@ geomBad = buildGeometry("posts", badDesign, params);
 fprintf('\nInfeasible example %s -> feasible = %d, reason: %s\n', ...
     mat2str(badDesign), geomBad.isFeasible, geomBad.feasibility.reason);
 plotGeometry(geomBad, 'Parent', nexttile(tl));
-exportgraphics(fig, fullfile(figDir, 'geometry_examples.png'), 'Resolution', 150);
+report(saveFigure(fig, fullfile(figDir, "geometry_examples.png")), "examples");
 
 %% Thin baffles: coarse vs fine mask (zoom)
 figZoom = figure('Color', 'w', 'Position', [150 150 1000 520]);
@@ -49,8 +52,7 @@ for p = {params, paramsFine}
         p{1}.mode, p{1}.grid.cellsPerWidth));
     xlim(ax, [2.0 4.0]);
 end
-exportgraphics(figZoom, fullfile(figDir, 'geometry_baffle_zoom.png'), ...
-    'Resolution', 150);
+report(saveFigure(figZoom, fullfile(figDir, "geometry_baffle_zoom.png")), "baffle zoom");
 
 %% Timing: feasibility check (XConstraintFcn workload) and mask build
 rng(1);
@@ -71,6 +73,12 @@ for p = {params, paramsFine}
 end
 fprintf('\nFigures saved to %s\n', figDir);
 fprintf('runGeometryExamples total runtime: %.2f s\n', toc(tStart));
+
+% -------------------------------------------------------------------------
+function report(method, name)
+%REPORT Print how a figure was saved.
+fprintf('  figure %-12s saved via: %s\n', name, method);
+end
 
 % -------------------------------------------------------------------------
 function X = randomDesigns(space, n)

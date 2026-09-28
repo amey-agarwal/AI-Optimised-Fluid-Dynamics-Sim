@@ -177,7 +177,7 @@ classdef GeometryTest < matlab.unittest.TestCase
             geom = buildGeometry("posts", [4, 0.2, 1.0, 0.5, 1], testCase.coarse);
             g = geom.grid;
             [~, i] = min(abs(g.xc - 3.5));
-            [~, j] = min(abs(g.yc - 0.25));
+            [~, j] = min(abs(g.yc - 0.35));   % first-row post at (3.5, 0.35)
             testCase.verifyEqual(geom.phiC(j, i), 0);
             [~, i0] = min(abs(g.xc - 0.5));
             [~, j0] = min(abs(g.yc - 0.5));
