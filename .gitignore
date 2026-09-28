@@ -1,0 +1,19 @@
+# Generated outputs (folders are kept via .gitkeep; startup.m also recreates them)
+results/*
+!results/.gitkeep
+figures/*
+!figures/.gitkeep
+
+# MATLAB autosave / backup / cache files
+*.asv
+*.autosave
+*.m~
+*.mex*
+slprj/
+codegen/
+*.slxc
+
+# OS / editor clutter
+.DS_Store
+Thumbs.db
+.vscode/
