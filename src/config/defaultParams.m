@@ -32,6 +32,8 @@ params.geometry.xMixStart = 1;                  % mixing section start
 params.geometry.xMixEnd = params.geometry.L - 1;% mixing section end
 params.geometry.baffleThickness = 0.05;         % fixed baffle thickness
 params.geometry.maskSmoothCells = 1;            % mask edge width [cells]
+params.geometry.zigzagRamp = 0.5;               % amplitude ramp length at
+                                                % each end of a zigzag
 
 % -------------------------------------------------------------------- grid
 % h is defined through an integer number of cells per width so that nx
