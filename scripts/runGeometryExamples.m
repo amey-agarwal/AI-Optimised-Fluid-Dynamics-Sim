@@ -1,58 +1,85 @@
 %% Step 1 - Geometry examples
 % Builds an example ("generic") design for each family on the coarse grid,
-% prints feasibility and mask-area diagnostics, saves plots to figures/,
+% prints feasibility and mask-area diagnostics, saves pictures to figures/,
 % shows how an infeasible design is reported, and times the feasibility
 % check that will run inside bayesopt's XConstraintFcn.
+% Pictures: normal figures, or PNGs written with imwrite when isHeadless()
+% is true (setpref('micromixer', 'headless', true)).
 
 tStart = tic;
 params = defaultParams("coarse");
 paramsFine = defaultParams("fine");
 figDir = params.paths.figures;
 families = ["posts", "baffles", "zigzag"];
+headless = isHeadless();
+fprintf('\nGraphics mode: %s\n', string(ternary(headless, "headless (imwrite)", "figures")));
 
-%% Example designs: diagnostics and plots
-fig = figure('Color', 'w', 'Position', [100 100 1200 820]);
-tl = tiledlayout(fig, numel(families) + 1, 1, 'TileSpacing', 'compact');
+%% Example designs: diagnostics and pictures
+badDesign = [4, 0.5, 0.4, 0, 1];
+geoms = cell(1, numel(families) + 1);
 fprintf('\n%-8s %-26s %-9s %-8s %-10s %-10s %-8s\n', 'family', 'design', ...
     'feasible', 'minGap', 'areaExact', 'areaMask', 'relErr');
-for family = families
+for k = 1:numel(families)
+    family = families(k);
     space = designSpace(family);
-    geom = buildGeometry(family, space.example, params);
+    geoms{k} = buildGeometry(family, space.example, params);
+    geom = geoms{k};
     relErr = abs(geom.solidAreaMask - geom.solidAreaExact) / geom.solidAreaExact;
     fprintf('%-8s %-26s %-9d %-8.3f %-10.4f %-10.4f %-8.4f\n', family, ...
         mat2str(space.example, 3), geom.isFeasible, geom.feasibility.minGap, ...
         geom.solidAreaExact, geom.solidAreaMask, relErr);
-    plotGeometry(geom, 'Parent', nexttile(tl));
-    % Single-family image from its own figure (exporting one axes of a
-    % tiled layout is what failed to render in MATLAB Online).
-    figOne = figure('Color', 'w', 'Position', [100 100 1100 240]);
-    plotGeometry(geom, 'Parent', axes(figOne));
-    report(saveFigure(figOne, fullfile(figDir, "geometry_" + family + ".png")), family);
-    close(figOne);
 end
-
-%% An infeasible design: overlapping posts
-badDesign = [4, 0.5, 0.4, 0, 1];
-geomBad = buildGeometry("posts", badDesign, params);
+geoms{end} = buildGeometry("posts", badDesign, params);
 fprintf('\nInfeasible example %s -> feasible = %d, reason: %s\n', ...
-    mat2str(badDesign), geomBad.isFeasible, geomBad.feasibility.reason);
-plotGeometry(geomBad, 'Parent', nexttile(tl));
-report(saveFigure(fig, fullfile(figDir, "geometry_examples.png")), "examples");
+    mat2str(badDesign), geoms{end}.isFeasible, geoms{end}.feasibility.reason);
 
-%% Thin baffles: coarse vs fine mask (zoom)
-figZoom = figure('Color', 'w', 'Position', [150 150 1000 520]);
-tlZ = tiledlayout(figZoom, 2, 1, 'TileSpacing', 'compact');
-spaceBaffles = designSpace("baffles");
-baffles = spaceBaffles.example;
-for p = {params, paramsFine}
-    geomZ = buildGeometry("baffles", baffles, p{1});
-    ax = nexttile(tlZ);
-    plotGeometry(geomZ, 'Parent', ax, 'Title', ...
-        sprintf('baffles, %s grid (h = 1/%d): mask vs exact outline', ...
-        p{1}.mode, p{1}.grid.cellsPerWidth));
-    xlim(ax, [2.0 4.0]);
+names = [families, "infeasible"];
+if headless
+    stack = {};
+    for k = 1:numel(geoms)
+        rgb = renderGeometryImage(geoms{k});
+        imwrite(rgb, fullfile(figDir, "geometry_" + names(k) + ".png"));
+        stack = [stack, {rgb, 255 * ones(12, size(rgb, 2), 3, 'uint8')}]; %#ok<AGROW>
+    end
+    imwrite(vertcat(stack{1:end-1}), fullfile(figDir, "geometry_examples.png"));
+    fprintf('  wrote geometry_<family>.png and geometry_examples.png via imwrite\n');
+else
+    fig = figure('Color', 'w', 'Position', [100 100 1200 820]);
+    tl = tiledlayout(fig, numel(geoms), 1, 'TileSpacing', 'compact');
+    figOne = figure('Color', 'w', 'Position', [100 100 1100 240]);
+    axOne = axes(figOne);
+    for k = 1:numel(geoms)
+        plotGeometry(geoms{k}, 'Parent', nexttile(tl));
+        cla(axOne);
+        plotGeometry(geoms{k}, 'Parent', axOne);
+        report(saveFigure(figOne, fullfile(figDir, "geometry_" + names(k) + ".png")), names(k));
+    end
+    close(figOne);
+    report(saveFigure(fig, fullfile(figDir, "geometry_examples.png")), "examples");
 end
-report(saveFigure(figZoom, fullfile(figDir, "geometry_baffle_zoom.png")), "baffle zoom");
+
+%% Thin baffles: coarse vs fine mask (zoom on 2 <= x <= 4)
+spaceBaffles = designSpace("baffles");
+geomCoarse = buildGeometry("baffles", spaceBaffles.example, params);
+geomFine = buildGeometry("baffles", spaceBaffles.example, paramsFine);
+if headless
+    % Same pixels per unit length on both grids: 10 px/cell coarse, 5 fine.
+    top = renderGeometryImage(geomCoarse, 'Scale', 10, 'XLim', [2 4]);
+    bottom = renderGeometryImage(geomFine, 'Scale', 5, 'XLim', [2 4]);
+    imwrite([top; 255 * ones(12, size(top, 2), 3, 'uint8'); bottom], ...
+        fullfile(figDir, "geometry_baffle_zoom.png"));
+    fprintf('  wrote geometry_baffle_zoom.png via imwrite (top coarse, bottom fine)\n');
+else
+    figZoom = figure('Color', 'w', 'Position', [150 150 1000 520]);
+    tlZ = tiledlayout(figZoom, 2, 1, 'TileSpacing', 'compact');
+    for geomZ = {geomCoarse, geomFine}
+        ax = nexttile(tlZ);
+        plotGeometry(geomZ{1}, 'Parent', ax, 'Title', sprintf( ...
+            'baffles, h = 1/%d: mask vs exact outline', round(1 / geomZ{1}.grid.h)));
+        xlim(ax, [2.0 4.0]);
+    end
+    report(saveFigure(figZoom, fullfile(figDir, "geometry_baffle_zoom.png")), "baffle zoom");
+end
 
 %% Timing: feasibility check (XConstraintFcn workload) and mask build
 rng(1);
@@ -78,6 +105,16 @@ fprintf('runGeometryExamples total runtime: %.2f s\n', toc(tStart));
 function report(method, name)
 %REPORT Print how a figure was saved.
 fprintf('  figure %-12s saved via: %s\n', name, method);
+end
+
+% -------------------------------------------------------------------------
+function out = ternary(condition, a, b)
+%TERNARY Return a if condition is true, otherwise b.
+if condition
+    out = a;
+else
+    out = b;
+end
 end
 
 % -------------------------------------------------------------------------

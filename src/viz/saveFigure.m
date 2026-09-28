@@ -8,7 +8,7 @@ function method = saveFigure(fig, file, opts)
 %     file            - output path (.png)
 %     opts.Resolution - dots per inch (default 150)
 %   Output
-%     method - "exportgraphics", "print" or "failed" (string)
+%     method - "exportgraphics", "print", "failed" or "skipped (headless)"
 %
 %   MATLAB Online sometimes warns "Unable to generate graphics because of
 %   system configuration or graphics resource constraint" when a figure is
@@ -23,6 +23,10 @@ arguments
     opts.Resolution (1,1) double {mustBePositive} = 150
 end
 
+if isHeadless()
+    method = "skipped (headless)";
+    return
+end
 if isfile(file)
     delete(file);
 end

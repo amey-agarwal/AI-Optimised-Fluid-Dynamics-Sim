@@ -31,6 +31,11 @@ reportReleaseFeatures();
 reportToolboxes();
 reportParallel();
 reportVideoProfiles();
+if isHeadless()
+    fprintf('\nGraphics mode: HEADLESS (pictures written with imwrite)\n');
+else
+    fprintf('\nGraphics mode: figures (setpref(''micromixer'',''headless'',true) to disable)\n');
+end
 fprintf('==========================================\n');
 fprintf('Next: results = runtests(''tests'')\n\n');
 end
